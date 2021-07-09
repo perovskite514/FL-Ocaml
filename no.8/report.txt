@@ -1,0 +1,182 @@
+嶋村光太郎 05-211013
+
+　以下の全ての問題について、実行の際にはmakeによってビルドして下さい。
+
+　問1
+　　{α = Int, β = α → α}の最汎単一化子は[α := Int, β := Int → Int]である。
+  これはαが決まっているため、直ちにβも決まる。
+
+  　{Int = Int → α}の最汎単一化子は存在しない。
+  制約の左辺がIntであり、右辺がInt → の形であるから最汎単一化子は存在しない。
+
+　　{Int → Int = α → β}の最汎単一化子は[α := Int, β := Int]である。
+  制約の左辺がInt → Intであるため、αとβは直ちに定まる。
+  
+  　{α1 → α2 = α2 → α3, α3 = β1 → β2}の最汎単一化子は[α1 := β1 → β2, α2 := β1 → β2, α3 := β1 → β2]である。
+  一つ目の制約からα1とα2とα3は全て等しいことが分かる。
+
+  　{α → α = β → γ, γ = Int → β}の最汎単一化子は存在しない。
+  一つ目の制約からαとβとγは全て等しいことが分かり、βとγが等しいことは二つ目の制約に矛盾するため、
+  最汎単一化子は存在しない。
+
+　以下、問2から問4についてはhttp://logic.cs.tsukuba.ac.jp/jikken/index.html
+の第7章の記述や実装を参考にした。また、問2から問4はtyping1.ml内に記述している。
+つまり、第7回のtySyntaxとconstraintSolverをtyping1.mlに統合している。
+
+　問2
+　　動作例
+      # #use "typing1.ml";;
+      # let alpha = new_tyvar ();;
+      val alpha : int = 0
+      # ty_subst [] (TyInt);;
+      - : ty = TyInt
+      # ty_subst [(alpha, TyInt)] (TyBool);;
+      - : ty = TyBool
+      # ty_subst [(alpha, TyInt)] (TyFun (TyVar alpha, TyBool));;
+      - : ty = TyFun (TyInt, TyBool)
+      # let beta = new_tyvar ();;
+      val beta : int = 1
+      # ty_subst [(alpha, TyInt)] (TyFun (TyVar beta, TyInt));;
+      - : ty = TyFun (TyVar 1, TyInt)
+  
+  考察
+  　スライドの12ページの型代入を丁寧に実装した。
+  ty_substの引数であるtyについて場合分けして、TyIntとTyBoolの場合はそのまま返し、
+  TyFunの場合はTyFun内の二つのtyについて再帰的にty_substを呼び出し、
+  TyVarの場合はsubst内のTyVar = tyの組を全探索するためにty_subst2という内部関数を
+  呼び出している。ty_subst2では、subst内に型変数が見つかった場合は対応する型を返し、
+  見つからなかった場合は型変数をそのまま返すように実装している。
+
+  問3
+  　動作例
+      # #use "typing1.ml";;
+      # let alpha = new_tyvar ();;
+      val alpha : int = 0
+      # let beta = new_tyvar ();;
+      val beta : int = 1
+      # compose [(beta, (TyFun (TyVar alpha, TyInt))); (alpha, TyBool)] [(alpha, TyInt)];;
+      - : subst = [(1, TyFun (TyVar 0, TyInt)); (0, TyInt)]
+      # compose [(alpha, TyInt); (beta, TyBool)] [(alpha, TyFun (TyVar alpha, TyVar beta))];;
+      - : subst = [(1, TyBool); (0, TyFun (TyInt, TyBool))]
+      # compose [(alpha, TyFun (TyVar alpha, TyVar beta))] [(alpha, TyInt); (beta, TyBool)];;
+      - : subst = [(0, TyInt); (1, TyBool)]
+
+　考察
+　　代入動作を行う関数を定義している。
+　sigma1とsigma2に対して、sigma2が内側になるように代入操作を行っている。
+　方法としては、sigma2内の全てのtyに対してty_substを用いてsigma1を適用
+　させている。ここでは、型変数とtyの組のリストを返している。その後に、
+　sigma1に含まれてはいるがsigma2には含まれていない型変数を見つけて、その
+　型変数とtyの組をリストに追加したものを返している。
+　　つまり、sigma2に含まれている型変数についてsigma2を適用させた後に
+　sigma1を適用させた結果を返す動作を前半部で実装している。そして、sigma2には
+　含まれていないがsigma1には含まれている型変数については、sigma2を適用した
+　結果が変わらないため、sigma1に含まれている型変数とtyの組を返すようにリストに
+　追加する動作を後半部で実装している。
+　
+　問4
+　　動作例
+      # #use "typing1.ml";;
+      # let alpha = new_tyvar ();;
+      val alpha : int = 0
+      # let beta = new_tyvar ();;
+      val beta : int = 1
+      # unify [((TyVar alpha), TyInt); ((TyVar beta), (TyFun ((TyVar alpha), (TyVar alpha))))];;
+      - : subst = [(1, TyFun (TyInt, TyInt)); (0, TyInt)]
+      # unify [(TyInt, TyFun (TyInt, (TyVar alpha)))];;
+      Exception: Not_found.
+      # unify [(TyFun (TyInt, TyInt), TyFun ((TyVar alpha), (TyVar beta)))];;
+      - : subst = [(1, TyInt); (0, TyInt)]
+
+      ./main
+      # 1 + 2;;
+      - : int = 3
+      # true;;
+      - : bool = true
+      # false;;
+      - : bool = false
+      # 13 = 4;;
+      - : bool = false
+      # 4 < 13;;
+      - : bool = true
+      # if true then 2 else 3;;
+      - : int = 2
+      # if 2 < 3 then 2 else 3;;
+      - : int = 2
+      # let x = 1 + 2;;
+      x : int = 3
+      # let y = x * 4;;
+      y : int = 12
+      # x;;
+      - : int = 3
+      # let z = 3 in z + z;;
+      - : int = 6
+
+　考察
+　　スライドの単一化アルゴリズムを実装している。
+　unifyでは内部のsolve関数で処理を行っている。まず、constraintsに
+　ついて順番にパターンマッチングを行い、(TyInt, TyInt)等と制約の組が等しかったら
+　スルーして、等しくなかったら次のパターンマッチングに移っている。
+　　次のパターンマッチングでは、制約の組が関数同士だったら第一引数同士、第二引数同士を組にして
+　制約に追加する。片方がTyVarの場合は出現検査を行って、問題ない場合は解となるsubstにスライドで
+　の[α := t]を(compose [α := t] subst)として合成し、また、制約に対してもty_substで[α := t]を
+　適用する。それ以外のケースは失敗であるのでNot_foundを出力している。
+　　ocuursでは、出現検査を行っている。(t1, t2)に対してt1 = t2の場合かt2がTyFun型(t3, t4)で、
+　そのt3かt4がoccursを再帰呼び出しした際にt1と等しくなる場合にtrueを返している。
+
+　問5  基本的にtyping.mlを修正している。
+
+　　動作例
+      # let x = 3 in let x = 5 in x;;
+      - : int = 5
+      # fun x -> x + 1;;
+      - : (int) -> (int) = fun
+      # fun x -> fun y -> x + y;;
+      - : (int) -> ((int) -> (int)) = fun
+      # (fun x -> x + 1) 2;;
+      - : int = 3
+      # (fun x -> fun y -> x + y) 2 3;;
+      - : int = 5
+      # let inc = fun x -> x + 1;;
+      inc : (int) -> (int) = fun
+      # let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1))) in fact 10;;
+      - : int = 3628800
+      # let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+      fact : (int) -> (int) = recfun
+      # fact 10;;
+      - : a7 = 3628800
+      # let id = fun x -> x in if (id true) then (id 10) else (id (1 + 1));;
+      - : int = 10
+      # let id = fun x -> x in if (id true) then (id (1 + 1)) else (id 10);;
+      - : int = 2
+      # let rec id2 a = (fun b -> if a = 0 then b else id2 (a-1) b) in if id2 1 true then id2 1 10 else id2 1 20;;
+      - : int = 10
+
+  考察
+  　基本的にスライドのlet多相の部分を参考にして実装している。
+  まず、tyenvはnameとty_schemaの組にしている。これによってinfer_expr内でtyenvを用いる場所で
+  tyに空のtyvarのリストを追加してtyenvの変更に対応している。
+  　次に、EVar xについての改良を説明する。まず、型環境からxの型スキームをlookupで探し出し、make_subst
+  によってtyvar listに対して新たな型変数を導入してsubstを作っている。ty_substにこのsubstとtyを代入した
+  結果をxの型とし、制約は空としている。
+　　また、ELetについてもスライドを参考に実装している。s1の生成まではスライド通りに実装している。
+　deltaについては型環境をsigmaに代入した結果として型環境deltaが得られることとスライドの注意に着目し、
+　型環境のそれぞれのtype_schemaについて、tyをsubstの中からtyvar list中に出てくる型変数を除いたものにtyを
+　代入して得られたtyに置き換えたものをdeltaとしている。この過程でdeltaやdelta2、set_sigmaといった補助関数を
+　用いている。続いてs1_set、delta_setとしてs1とdeltaに出てくる全てのtyに出てくる型変数の集合を再帰的に求めている。
+　ここでは、補助関数としてs1_listやs2_list等を用いている。そして、pとしてs1_setとdelta_setの差集合をset_difference
+　を用いて求めている。最後に、newtyenvとしてpをtyenv型に変換した後に、スライドの通りにe2の型と制約を求めて返り値を返している。
+　　他に変更を加えた部分としては再帰関数に関する実装が挙げられる。ELetRecでは、第7回のスライドと第8回のLet式のスライドの両方を
+　参考にしている。e1の型と制約を求めるところまでは第7回のスライドを参考に実装していて、その後はELetの実装に倣ってs1やdelta、p
+　を求めている。そして、deltaやpを利用して生成した型環境でe2を評価し、式全体の型と制約は第8回のELetのスライドの記述のように
+　返している。CRecDeclに関してはELetRecの実装に倣って実装を行っている。
+　　動作例を見ると再帰関数やスライドで出てきたidの例に対応しているため、let多相に対応していることが分かる。
+
+　発展1
+
+  考察
+  　tがαを含む場合について考える。例えばt = α -> αである時はσ(α) = σ(t)を満たすσが存在しない。つまり、制約{α = t}
+  の単一化子が存在しない。これは、αをどのような型で置き換えても、常にσ(t)の方がσ(α)よりも大きな型になってしまうことから
+  分かる。これによって健全性が損なわれる。出現検査を行わないで単一化する場合は型が有限ではなく無限でも良いと考えている
+  ことに相当する。つまり、同値再帰型について考えている。
+

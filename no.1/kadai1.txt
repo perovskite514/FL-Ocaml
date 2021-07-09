@@ -1,0 +1,15 @@
+嶋村光太郎 05-211013
+
+動作例
+    # sum_to  10;;
+    - : int = 55
+    # is_prime 101;;
+    - : bool = true
+    # is_prime 12;;
+    - : bool = false
+    # gcd 10 5;;
+    - : int = 5
+    # gcd 5 10;;
+    - : int = 5
+    # gcd 7 5;;
+    - : int = 1

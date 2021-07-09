@@ -1,0 +1,200 @@
+嶋村光太郎 05-211013
+
+問1
+　動作例
+    ./sort <<END
+    > aaa
+    > bbb
+    > ccc
+    > eee
+    > ddd
+    > abc
+    > aaa
+    > END
+    aaa
+    aaa
+    abc
+    bbb
+    ccc
+    ddd
+    eee
+
+　考察
+    OCamlMakefileを用いてビルドして作ったsortファイルを実行した結果が上記である。
+    次にstr.Set.mliを除いてコンパイルを試してみた。スライドの分割コンパイルの実行例
+    のように直接shellに打ち込んでコンパイルする際に、str.Set.mliを除いた場合はコンパイル
+    エラーが出てコンパイルが出来なかった。OCamlMakefileを用いた場合は、コンパイル自体は出来たが
+    シグネチャが存在しない状態でのファイルとなっていると思われる。最後のリンクの順番を変えて
+    $ ocamlc -o sort sort.cmo strSet.cmoとしてみるとコンパイルエラーが出た。これはsortに
+    strSetが用いられているため、リンクの順番を変えた時にエラーが生じたと考えられる。
+
+問2
+　動作例
+    let st = Stack.empty;;
+    let st = Stack.push 10 st;;
+    let st = Stack.push 5 st;;
+    let st = Stack.push 3 st;;
+    let i = Stack.size st;;
+    let st = Stack.pop st;;
+
+    val st : 'a Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val i : int = 3
+    val st : int * int Stack.t = (3, <abstr>)
+
+ 考察
+   'a listの型でのスタックの実装を行った。課題要件の型の定義に合うように
+　popではタプルを返すようにしている。課題要件の関数のシグネチャを用意する
+　ことで動作例において、型や実態が<abstr>が外部から隠匿されていることが分かる。
+　また、モジュール内の実装を適切に変更することで'a list * intに変更することも可能である。
+
+問3
+　動作例
+    let s = IntMultiset.add 5 IntMultiset.empty;;
+    let s2 = IntMultiset.add 5 s;;
+    let s3 = IntMultiset.add 2 s2;; 
+    let i = IntMultiset.count 5 s3;;
+    let i2 = IntMultiset.count 2 s3;;
+    let s4 = IntMultiset.remove 5 s3;;
+    let i3 = IntMultiset.count 5 s4;;
+    let s5 = IntMultiset.remove 5 s4;;
+    let i4 = IntMultiset.count 5 s5;;
+    let s6 = IntMultiset.remove 5 s5;;
+    let i5 = IntMultiset.count 5 s6;;
+
+    val s : IntMultiset.t = <abstr>
+    val s2 : IntMultiset.t = <abstr>
+    val s3 : IntMultiset.t = <abstr>
+    val i : int = 2
+    val i2 : int = 1
+    val s4 : IntMultiset.t = <abstr>
+    val i3 : int = 1
+    val s5 : IntMultiset.t = <abstr>
+    val i4 : int = 0
+    val s6 : IntMultiset.t = <abstr>
+    val i5 : int = 0
+　考察
+　　二分探索木を用いて実装した。remove関数では求める要素の大小関係に従って木を下るように探索していき、
+　求める要素が存在した場合はその要素を削除すると共に、そのNodeの右の要素の一番小さい要素をminという関数で
+　探し出して、削除した要素の位置に持ってくることで二分探索木の構造を維持している。remove関数で削除する要素数は
+　一回につき1つである。add関数に関しても、同様に二分探索木の構造を活かして要素の追加を行っている。count関数では、
+　木を左右の要素を辿るように分岐して再帰することで要素の数を数えている。実行例ではint型の値を用いて動作が正常であるか
+　確認している。
+
+問4
+　動作例
+    let s = IntMap.add 5 1 IntMap.empty;;
+    let s2 = IntMap.add 6 2 s;;
+    let s3 = IntMap.add 7 3 s2;;
+    let i = IntMap.myLookup 5 s3;;
+    let s4 = IntMap.add 5 4 s3;;
+    let i2 = IntMap.myLookup 5 s4;;
+    let s5 = IntMap.remove 5 s4;;
+    let i4 = IntMap.myLookup 5 s5;;
+
+    val s : (OrderedInt.t * int) list = [(5, 1)]
+    val s2 : (OrderedInt.t * int) list = [(5, 1); (6, 2)]
+    val s3 : (OrderedInt.t * int) list = [(5, 1); (6, 2); (7, 3)]
+    val i : int = 1
+    val s4 : (OrderedInt.t * int) list = [(5, 4); (6, 2); (7, 3)]
+    val i2 : int = 4
+    val s5 : (OrderedInt.t * int) list = [(6, 2); (7, 3)]
+    Exception: Not_found.
+
+　考察
+　　リスト型を用いて連想配列を実装した。keyはorder型を用いている。add関数は
+　リストを探索して、keyが見つかった場合はkeyに対するvalueを更新して、見つか
+　らなかった場合は、keyとvalueの組を新たに追加する関数である。remove関数は
+　似たようにリストを探索して、keyが見つかった場合は削除する関数である。myLookup
+　関数も同様にリストを探して、keyが見つかった場合にvalueを返す関数である。
+
+問5
+　動作例
+    let v1 = [[true; true]; [false; false]];;
+    let v2 = [[true; false]; [true; true]];;
+    let v3 = [[true; true; false]; [false; false; true]];;
+    let s = BoolMatrix.add v1 v2;;
+    let s2 = BoolMatrix.mul v1 v3;;
+    let s3 = BoolMatrix.add v1 v3;;
+
+    val v1 : bool list list = [[true; true]; [false; false]]
+    val v2 : bool list list = [[true; false]; [true; true]]
+    val v3 : bool list list = [[true; true; false]; [false; false; true]]
+    val s : Bool.t list list = [[true; true]; [true; true]]
+    val s2 : Bool.t list list = [[true; true; true]; [false; false; false]]
+    Exception: Matrix(T).SizeError.
+
+    let v4 = [[Int 1; Int (-1)]; [Int 2; Int (-2)]];;
+    let v5 = [[Int 10; Int (-10)]; [Int 5; Int (-5)]];;
+    let v6 = [[Int 1; Int 5; Int 10]; [Int (-1); Int (-5); Int (-10)]];;
+    let v7 = [[Int 1; Int 5]; [Int (-1); Int (-5)]; [Int (3); Int (-10)]];;
+    let s4 = IntMatrix.add v4 v5;;
+    let s5 = IntMatrix.mul v4 v6;;
+    let s6 = IntMatrix.mul v4 v7;;
+
+    val v4 : intint list list = [[Int 1; Int (-1)]; [Int 2; Int (-2)]]
+    val v5 : intint list list = [[Int 10; Int (-10)]; [Int 5; Int (-5)]]
+    val v6 : intint list list =
+    [[Int 1; Int 5; Int 10]; [Int (-1); Int (-5); Int (-10)]]
+    val v7 : intint list list =
+    [[Int 1; Int 5]; [Int (-1); Int (-5)]; [Int 3; Int (-10)]]
+    val s4 : Int.t list list = [[Int 1; Int (-10)]; [Int 2; Int (-5)]]
+    val s5 : Int.t list list =
+    [[Int (-2); Int (-6); Int (-11)]; [Int (-3); Int (-7); Int (-12)]]
+    Exception: Matrix(T).SizeError.
+
+    let v8 = [[Int 0; Int 10; Int 1; Int 15; Int 50]; [Int 10; Int 0; Inf; Inf; Int 14]; [Int 1; Inf; Int 0; Int 5; Inf]; [Int 15; Inf; Int 5; Int 0; Inf]; [Int 50; Int 14; Inf; Inf; Int 0]]
+    let v9 = IntMatrix.mul v8 v8;;
+    let v10 = IntMatrix.mul v9 v8;;
+    let v11 = IntMatrix.mul v10 v8;;
+
+    val v8 : intint list list =
+    [[Int 0; Int 10; Int 1; Int 15; Int 50]; [Int 10; Int 0; Inf; Inf; Int 14];
+    [Int 1; Inf; Int 0; Int 5; Inf]; [Int 15; Inf; Int 5; Int 0; Inf];
+    [Int 50; Int 14; Inf; Inf; Int 0]]
+    val v9 : Int.t list list =
+    [[Int 0; Int 10; Int 1; Int 6; Int 24];
+    [Int 10; Int 0; Int 11; Int 25; Int 14];
+    [Int 1; Int 11; Int 0; Int 5; Int 51];
+    [Int 6; Int 25; Int 5; Int 0; Int 65];
+    [Int 24; Int 14; Int 51; Int 65; Int 0]]
+    val v10 : Int.t list list =
+    [[Int 0; Int 10; Int 1; Int 6; Int 24];
+    [Int 10; Int 0; Int 11; Int 16; Int 14];
+    [Int 1; Int 11; Int 0; Int 5; Int 25];
+    [Int 6; Int 16; Int 5; Int 0; Int 39];
+    [Int 24; Int 14; Int 25; Int 39; Int 0]]
+    val v11 : Int.t list list =
+    [[Int 0; Int 10; Int 1; Int 6; Int 24];
+    [Int 10; Int 0; Int 11; Int 16; Int 14];
+    [Int 1; Int 11; Int 0; Int 5; Int 25];
+    [Int 6; Int 16; Int 5; Int 0; Int 30];
+    [Int 24; Int 14; Int 25; Int 30; Int 0]]
+　考察
+　　リストのリストを用いて行列のモジュールを実装した。versizeとhorsizeの関数は
+　行列の縦と横の長さを取得する関数である。components関数は行列の一行目を取得する
+　関数である。add関数やmul関数は行列の演算を行う関数である。行列の演算を行う際に
+　各行に対応するリストの作成のための再帰と、そのリスト同士を繋ぎ合わせるための再帰
+　が二重に必要であるため、plus関数やtimes関数、mul1関数、mul2関数を適切に用いて前者
+　の再帰を行っている。また、行列の積を求める際にtranspose関数で行列の転置を行っている。
+　　また、BoolMatrixやIntMatrixモジュールがスライドで指定された要素を持つモジュールである。
+　BoolMatrixは真偽値を扱うモジュールであり、計算結果は動作例の通りである。IntMatと考えることで
+　∞を扱うモジュールであり、計算結果は動作例のとおりである。また、unitには0、zeroには∞を与えている。
+　　最後のv8以降の動作例は最短路の長さを求めている。スライドの例のように行列を定期して行列累乗の要領で
+　最短経路の長さを求めている。
+
+発展1
+　動作例
+    module Eq1 : EQ = Eq
+    let a = Eq.refl;
+
+    module Eq1 : EQ
+    val a : ('a, 'a) Eq.equal = Eq.T
+
+　考察
+　　Eqモジュールの定義のみを行った。実装に際しては、https://github.com/janestreet/base/blob/9ef390d678d4573ff54b7d94c2cb5ccdf92dc0ad/src/type_equal.ml
+　を参考にした。reflが反射律、symmが対称律、transが推移律にそれぞれ対応していると考えることで、Eqは二項関係を表していると捉えることが出来る。
+
+　

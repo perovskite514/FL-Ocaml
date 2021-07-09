@@ -1,0 +1,113 @@
+嶋村光太郎 05-211013
+
+問1
+　動作例
+    ok
+    - : unit = ()
+    # lookupDiv "x" "y" table;;
+    - : (int, string) result = Error "Division by Zero"
+    # lookupDiv "x" "z" table;;
+    - : (int, string) result = Ok 3
+    # lookupDiv "x" "b" table;;
+    - : (int, string) result = Error "Not found: b"
+    # lookupDiv "a" "z" table;;
+    - : (int, string) result = Error "Not found: a"
+
+　考察
+　　eLookupを二回用いて得た引数同士をmyDivに渡すことで割り算を
+　行っている。多相型を用いることでエラー処理と普通の計算をまとめて
+　扱っている。
+
+問2
+　動作例
+    val hukumen1 : (int * int * int * int * int) list =
+  [(0, 0, 0, 0, 0); (1, 2, 0, 4, 4); (2, 4, 0, 8, 8); (2, 5, 0, 1, 0);
+   (3, 7, 0, 5, 4); (4, 9, 0, 9, 8); (5, 0, 1, 0, 0); (6, 2, 1, 4, 4);
+   (7, 4, 1, 8, 8); (7, 5, 1, 1, 0); (8, 7, 1, 5, 4); (9, 9, 1, 9, 8)]
+    val filter : 'a list -> 'a -> 'a list = <fun>
+    val kenzan : int -> int -> 'a list -> 'a list = <fun>
+    - : float = 0.404978
+    val money : int -> int -> int -> int -> int -> int -> int -> int -> bool =
+    <fun>
+    val hukumen2 : (int * int * int * int * int * int * int * int) list =
+    [(9, 5, 6, 7, 1, 0, 8, 2)]
+    - : float = 0.609011
+
+　考察
+　　hukumen1では、重複と先頭の0を含めた全列挙を行っており、12個の解が出た。
+　hukumen2では、filterを用いてリストを減らしていって全列挙を行ったが、そのままやると、
+　4秒程掛かってしまったため、高速化を行った。今回の高速化は最大桁での評価を用いた枝刈り
+　を行った。一般化した覆面算を高速化する場合は、下の桁から確定させていって計算結果を
+　用いて順次枝刈りを行えばよいと思われる。
+
+問3
+　動作例
+    Fib(4)
+    Fib(2)
+    Fib(0)
+    Fib(1)
+    Fib(3)
+    Fib(1)
+    Fib(2)
+    Fib(0)
+    Fib(1)
+
+　考察
+　　動作例はExpected Outputの出力例通りになった。returnでは型に合うようにint型と
+　string型のタプルを返している。>>=では受け取ったタプルのうち、int型の方にfを適用して
+　string型の方を接続したタプルを新しく返している。また、Writerモナドは何らかの出力という
+　副作用に関わるモナドである。
+
+問4
+　動作例
+    runMemo (fib 80);;
+    - : int = 23416728348467685
+
+  考察
+  　typeとして(int,int)のリストを受け取って、計算結果の返り値とのタプルを返す
+  関数を定義して、これを利用してメモ化した状態を持ちながら、新たにメモ化を行ったり
+  メモ化した値を参照する動作を行っている。Bindやreturnに関してはスライドの例3のステート
+  モナドの例を参考に実装している。memoの第一引数にはtype型の定義に対応させた関数を渡している。
+
+発展1
+  動作例
+  　name: Vincent
+    age: 25
+    - : unit = ()
+    name: Sato
+    age: 35
+    - : unit = ()
+    type env1 = { meter : int; centimeter : int; }
+    val to_string1 : int -> int -> string = <fun>
+    val name1 : env1 -> int = <fun>
+    1meter = 100centimeter
+    - : unit = ()
+
+    考察
+    　https://gist.github.com/VincentCordobes/fff2356972a88756bd985e86cce03023
+    のReader monadを実装して使用してみた。実装中の e |> fという演算はf eという適用
+    を意味している。
+    　Reader monadは環境から値を読み込む計算を行うmonadであり、共有された環境から
+    値への関数となっている。コード内のexampleの例では、>>=を介して環境から値への関数が受け渡されて
+    それを元に計算された値が最終的に出力されていることが分かる。
+
+発展2
+  動作例
+  　val return : 'a -> 'a list = <fun>
+    val p : 'a list -> bool = <fun>
+    val ( >>= ) : 'a list -> ('a -> 'b list) -> 'b list = <fun>
+    val x : int list = [1; 10; 100]
+    val f : int -> int list = <fun>
+    val guard : bool -> unit list = <fun>
+    val find : (int * int) list = []
+    - : int list = [0; 2; 9; 11; 99; 101]
+　
+　考察
+　　https://qiita.com/1to100pen/items/1558a4d6600c47f7f859
+　を参考にして実装を行った。上記記事で定義されているjoinを書き換えて
+　any_null、つまり渡されたリストの中に1つでも空リストが存在するか？という
+　条件をList.existsによって表現して実装した。このリストモナドでは、1つでも
+　空リストが存在すると結果として空リストを返し、それ以外の場合はconcatする。
+　スライドの例のfindを今回の>>=の定義で実行してみると、空リストを返すことが分かり、
+　また、スライドの例に載っているx,fを用いたx >>= fを計算してみると、これはスライドの
+　リストモナドと同様にconcatした結果を返した。

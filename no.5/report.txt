@@ -1,0 +1,196 @@
+嶋村光太郎 05-211013
+
+以下の全ての問題について、実行の際にはmakeによってビルドして下さい。
+問1
+　動作例
+    $ ocamlyacc parser.mly
+    $ ocamllex lexer.mll
+    $ ocamlc -c syntax.ml
+    $ ocamlc -c parser.mli
+    $ ocamlc -c parser.ml
+    $ ocamlc -c lexer.ml
+    $ ocamlc -c example.ml
+    $ ocamlc -o example syntax.cmo parser.cmo lexer.cmo example.cm
+    $ echo "if x < 0 then 0 else x;;" | ./example
+    EIf (ELt (x,0),0,x)
+
+    $ make clean
+    $ make
+    $ echo "if x < 0 then 0 else x;;" | ./example
+    EIf (ELt (x,0),0,x)
+
+  考察
+    まず、スライドの例にそって順にビルドしてからechoで出力を確認した後、
+　make cleanをしてから、続いてmakeによってビルドしてからechoで同様に出力を確認
+　したところ、出力結果は同じになった。
+
+    ビルドの各ステップを説明すると、ocamlyacc parser.mlyとocamllex lexer.mllで
+　それぞれparser.ml, parser.mliとlexer.mlが生成される。続いて、それらのファイルと
+  syntax.ml,example.mlをコンパイルして出てきたファイルをさらにまとめてコンパイルしている。
+    ここで、ビルドする順番を変化させてみた。具体的には、syntax.mlの前にparser.mliのコンパイル、
+　syntax.mlの後に、parser.mli,parser.mlのコンパイルをせずに先にlexer.mlのコンパイルを試してみた。
+　実行結果は以下のようになった。
+　
+  $ ocamlc -c parser.mli
+  File "parser.mli", line 16, characters 48-62:
+  16 |   (Lexing.lexbuf  -> token) -> Lexing.lexbuf -> Syntax.command
+                                                       ^^^^^^^^^^^^^^
+  Error: Unbound module Syntax
+
+  $ ocamlc -c lexer.ml
+  File "lexer.mll", line 8, characters 17-28:
+  Error: Unbound module Parser
+
+    エラーが出た原因としては、parserファイルはsyntax.mlの内容を参照しており、また、lexer.ml
+  はparserファイルの内容を参照している依存関係があることが考えられる。
+
+    次に、標準出力ではなく、文字列を読むように書き換えた。具体的には、example.mlを書き換えた。
+  https://ocaml.jp/?Lexingを参考にして、Lexing.from_string関数を用いて、また、main関数には引数として
+  コマンドライン引数で読み込んだ文字列を渡すようにした。実行例は以下の通りである。
+
+  $ ./example "x + 5;;"
+  EAdd (x,5)
+
+    最後に、arith_exprをexprに潰してみた。具体的にはparser.mlyファイルを書き換えている。なお、書き換える前の
+  ファイルはparser1.mlyとしてディレクトリに残している。実行結果は以下の通りになり、書き換える前のファイルでは
+  Parse Error!が出ていたはずの(if文 = if文)が構文解析されてしまっている。
+
+   $ ./example "if x = 0 then x else 0 = if x < 0 then x else 10;;"
+  EIf (EEq (x,0),x,EEq (0,EIf (ELt (x,0),x,10)))
+  
+問2
+　動作例
+    # 1 + (2 + 3);;
+    - = 6
+    # x - 6;;
+    - = 4
+    # 10 - 15;;
+    - = -5
+    # x * (10 + 5);;
+    - = 150
+    # 15 / 3;;
+    - = 5
+    # 10 / 3;;
+    - = 3
+    # x / i;;
+    - = 10
+    # x / 0;;
+    Fatal error: exception Division_by_zero
+
+  考察
+    減算、乗算、除算を扱えるように拡張した。具体的には、例題のeval.mlに
+  EAddと同じようにESub,EMul,EDivを追加してこれらの計算が評価できるようにした。
+  また、EDivに関しては0除算の場合にDivision_by_zeroの例外を返すようにif文で場合分けを行った。
+
+問3
+　動作例
+    # let x = 10;;
+    x = 10
+    # let x = 10 in x + 20;;
+    - = 30
+    # let x = 10 in let y = x + 10 in y + 10;;
+    - = 30
+
+  考察
+  　まず動作例を見るとletによる宣言が処理系によって受理されていることが分かる。
+  次に実装について説明する。書き換えたファイルはeval.mlとsyntax.mlである。
+  　eval.mlに関しては、eval_expr関数のパターンマッチングにELetの項を追加した。
+  ELet (e1,e2,e3)というマッチングパターンに関して、e2を評価した値をe1と対応付けて環境
+  に追加し、その新しい環境の元でe3を評価して、新しい環境とe3を評価した値を返している。
+  ここで、マッチングパターンが全て尽くされていない場合に出るwarningに対応するため、e2を
+  評価した値がVIntかVBoolかで場合分けしている。また、eval_command関数のパターンマッチングに
+  CDeclを追加し、ELetのように適切に実装を行っている。
+  　次に、syntax.mlに関しては、ELetとCDeclのパターンマッチングを追加することでコンパイル時の
+  warningを消している。
+
+問4
+　動作例
+    # not true;;
+    - = false
+    # not false;;
+    - = true
+    # true && true;;
+    - = true
+    # false && false;;
+    - = false
+    # true && false;;
+    - = false
+    # true || true;;
+    - = true
+    # false || false;;
+    - = false
+    # false || true;;
+    - = true
+    # not false || true;;
+    - = true
+    # not false || 3 < 5;;
+    - = true
+    # not false || true = true;;
+    - = true
+    # not false && false = false;;
+    - = true
+    # true = true < false = false;;
+    - = false
+    # true = true && false < true;;
+    - = true
+    # true && true = false && false;;
+    - = false
+    # 1 = 2 && 1 = 2;;
+    - = false
+    # true || false && true;;
+    - = true
+  
+  考察
+  　&&,||,notに関するBool演算とtrue = trueやtrue < falseといった真理値を返す演算に対応する
+  ように処理系を書き換えた。
+  　syntax.ml......BAnd,BOr,BNotと行った型定義とパターンマッチングの追加を行った。
+  　parser.mly......トークンの追加とa_expr,b_expr等を追加して、演算の優先順位等に気をつけて実装を行った。
+    lexer.mll......解析規則に"&&","||","not"を追加した。
+    eval.ml......eval_expr関数のパターンマッチングに各Bool演算を追加し、また、EQ,ELについてBool値の計算も出来るよう
+  に場合分けを書き換えた。
+  　動作例を見ると分かるように、多様なBool演算を処理系が受理している。
+
+発展1
+　動作例
+    # (x + 10) + 10;;
+    - = 30
+    # [(x + 10);;
+    Unknown Token
+    # (x + 10)[];;
+    Unknown Token
+    # (x + 10) + [];;
+    Unknown Token
+    # (x + true);;
+    Eval Error
+    # (x / 0);;
+    Division_by_zero
+    # 
+  
+  考察
+    main関数内のread_eval_print関数内にtry with構文を導入することでエラー処理を行っている。各種エラーを
+  場合分けしてエラー内容を表示すると共に、read_eval_print envを行うことによってインタプリタプロンプトに
+  戻るようにした。実装は問4を基にしている。
+
+発展2
+　動作例
+    # let x = 10 let y = 20;;
+    y = 20
+    # let x = 10 let y = 20 let z = x * y;;
+    z = 200
+    # (x + y);;
+    - = 30
+    # (x + y + z);;
+    - = 230
+  
+  考察
+  　まず、syntax.ml内でcommand型にCLetを新たに追加して、CLetを用いて再帰を行っている。
+  parser.mlyでは、Syntax.commandを扱うletexprという記号を追加している。letの宣言が続いている場合は
+  toplevelからletexprが生成され、letexprの生成規則によって再帰的にletの宣言を扱えるように実装している。
+  また、eval.ml内のeval_command内にはパターンマッチングでCLetにマッチした際の処理を追加しており、そこでは
+  CLet型が持つcommand型の引数をeval_commandを再帰的に呼び出すことで処理している。print処理については改良を
+  加えていないが、動作例を見ると、let宣言を続けて行ったx,y,zが内部の環境で保持されていることが分かる。
+  　なお、実装は発展1を基にしている。
+    
+　
+  　
+

@@ -1,0 +1,250 @@
+嶋村光太郎 05-211013
+
+以下の全ての問題について、実行の際にはmakeによってビルドして下さい。
+問1
+　動作例
+    # fun x -> fun y -> x + y;;
+    - = fun
+    # let add = fun x -> fun y -> x + y;;
+    add = fun
+    # add 5 3;;
+    - = 8
+    # add 0 15;;
+    - = 15
+    # (let y = 5 in fun x -> x + y) 3;;
+    - = 8
+    # let a = 10;;
+    a = 10
+    # let f = fun x -> x + a;;
+    f = fun
+    # let a = 20;;
+    a = 20
+    # f 5;;
+    - = 15
+
+　考察
+    資料のファイルを拡張して、関数抽象・適用を可能にした。
+　まず、syntax.mlにおいてはVFunの型を追加している。また、
+　print_value関数においてVFun型が来た時には"fun"と出力するようにした。
+　　また、eval.mlにおいてはeval_expr関数のパターンマッチングにEFunとEAppを追加した。
+　EFunではnameとexprの他に環境を持たせたVFun型を返す。EApp型では、第一引数を評価した結果が
+　VFunの場合に、VFun内の第一引数をEAppの第二引数に束縛した環境下でVFunの第二引数を評価している。
+　　動作例を見ると、正しく動いていて、かつ静的スコープであることが分かる。
+
+問2
+　動作例
+　　# let rec sum x = if x < 1 then 0 else x + sum(x - 1);;
+    sum = recfun
+    # sum 10;;
+    - = 55
+    # sum 1;;
+    - = 1
+    # sum 3;;
+    - = 6
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in x + 10;;
+    - = 20
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in sum 10;;
+    - = 55
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in sum 10 + 10;;
+    - = 65
+
+    考察
+    　問1と同様に参考資料を拡張することで再帰関数に対応した。
+    syntax.mlでは、再帰関数に対して"recfun"と出力するようにした。また、
+    expr,value,commandのそれぞれの型に対して再帰用の型を追加している。これらの型は
+    自分自身の関数名を保持している。
+    　eval.mlでは、EAppのパターンマッチングに変化を加えており、また、ELetRecのパターンマッチング
+    を追加している。ELetRecのパターンマッチングでは再帰関数の評価であり、現在の環境に対して、自分自身と
+    自分自身の名前の組を追加した環境を新たに作り、その環境内でin以降の部分、すなわち第四引数を評価している。
+    EAppに関しては、関数が再帰関数だった場合を追加している。現在の環境に対して、関数の引数の情報と自分自身と
+    その名前の情報を環境に追加した上で関数のボディ部分の評価を行っている。
+    　最後に、eval_command内のCRecDeclについては、自分自身の名前、自分自身の名前と再帰関数本体の情報を追加した環境、
+    再帰関数本体の組を返すように実装している。
+
+問3
+　動作例
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1);;
+    - = recfun
+    # sum 10;;
+    - = 55
+    # sum 1;;
+    - = 1
+    # sum 3;;
+    - = 6
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in sum 10;;
+    - = 55
+    # let rec even n = if n = 0 then true else odd(n - 1) and odd n = if n = 0 then false else even(n - 1);;
+    - = recfun
+    # let rec even n = if n = 0 then true else odd(n - 1) and odd n = if n = 0 then false else even(n - 1) in even 10;;
+    - = true
+    # let rec even n = if n = 0 then true else odd(n - 1) and odd n = if n = 0 then false else even(n - 1) in odd 10;;
+    - = false
+    # odd 10;;
+    - = false
+    # even 10;;
+    - = true
+    # odd 9;;
+    - = true
+    # even 1;;
+    - = false
+
+　考察
+　　問2を拡張して作成した。方法1を基に実装した。
+　まず、syntax.mlではELetRecの型を(name,name,expr)のリストに書き換えた。これは
+　方法1のスライドの(fi,xi,ei)のリストに対応している。VRecFunについては、インデックスと
+　先ほどのリストと環境の組となるように定義しなおしている。これが再帰関数用のクロージャーの
+　定義となる。CRecDeclの定義も同様に書き換えている。また、VPrint型をValueに追加することで再帰関数の定義時に
+　recfunと表示するようにしている。
+　　次に、eval.mlの書き換えについて述べる。まず、nlookupとnlookup1については(fi, xi, ei)のリスト
+　からn番目のxやeを取得する関数である。addenvについては、スライドに書かれている環境envへの束縛を実現する
+　関数であり、f1からfnまでを<index, [(f1,x1,e1);...;(fn,xn,en)], env>に束縛して、最終的にその環境を返している。
+　　eval_expr関数内のパターンマッチングについてはEAppとELetRecについて変化を加えている。EAppでは関数がVRecFunだった
+　場合に、まず、addenvを利用した環境への追加に加えてnlookupを用いてxiをvに束縛する動作も行ったうえでその環境下で
+　eiをnlookup1で持ってきて評価を行っている。ELetRecに関しては、addenvを用いて環境の追加を行った後に、引数をその環境下
+　で評価している。
+　　最後にCRecDeclのパターンマッチングについてはaddenvを用いて作成した環境を返していて、ここで第三引数にVPrint型の値を
+　渡している。これによって、再帰関数の定義時にprint_value関数内でVPrint型のパターンマッチングが行われてrecfunと表示されるように実装している。
+
+問4
+　動作例
+    # let add = fun x -> fun y -> x + y;;
+    add = fun
+    # add 5 3;;
+    - = 8
+    # add 0 15;;
+    - = 15
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1);;
+    sum = fun
+    # sum 10;;
+    - = 55
+    # sum 1;;
+    - = 1
+    # sum 3;;
+    - = 6
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in x + 10;;
+    - = 20
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in sum 10;;
+    - = 55
+
+    考察
+    　問1と同様に参考資料を拡張することで再帰関数に対応した。問2とは異なり、環境の参照を用いた。
+    syntax.mlでは、VFunの定義のみを変更し環境を環境の参照に変えている。
+    　eval.mlでは、まず、EFunの返り値のVFunの環境を環境の参照に書き換えている。また、EAppに対しても、
+    環境のoenvを!oenvに書き換えている。ELetRecに関しては、まず、ダミーの環境をoenvとして作成している。
+    そして、この環境をv = VFunの中に入れた状態で、oenvに再代入を行う。この再代入する環境は現在の環境に
+    自分自身の名前とvを追加したものとする。この後に、同様の環境でin以降の引数を評価している。特徴的なのは
+    v = VFunとoenvの関係であり、VFunの中に含まれているoenv内にvが含まれていることで循環的なクロージャー構成と
+    なっており、これが再帰構造に対応して再帰関数の評価を可能にしている。
+    　最後に、eval_command内のCRecDeclについては、循環的なクロージャーの作成をELetRecと同様の実装で行っている。
+
+発展1　
+　動作例
+　　# let add = fun x -> fun y -> x + y;;
+    add = fun
+    # add 5 3;;
+    - = 8
+    # (let y = 5 in fun x -> x + y) 3;;
+    - = 8
+    # let a = 10;;
+    a = 10
+    # let f = fun x -> x + a;;
+    f = fun
+    # let a = 20;;
+    a = 20
+    # f 5;;
+    - = 15
+    # let f x y z = x + y + z in f 100 10 1;;
+    - = 111
+    # let f x y = x + y in f 10 1;;
+    - = 11
+    # let f = fun x y z -> x + y + z;;
+    f = fun
+    # f 100 10 1;;
+    - = 111
+
+　考察
+　　問1から拡張した。
+　変えた部分は主にparser.mlyであり、加えてそれに付随してeval.mlを一部書き換えている。
+　サポートした略記法はスライドに書かれている二つの例であり、動作例を見ると問1で動いた関数が
+　問題なく動き、かつスライドに書かれている二つの例が動いていることが分かる。
+　　parser.mlyで具体的に変えた部分について説明する。expr:の所でLETとFUNに続くvarの部分をvar lvar
+　と分割することでlet f x y =やfun x y z ->と書いたときのx,y,zを引数として読み込めるようにしている。
+　lvar,lvar2ではいずれもvar lvarをEFunの引数とすることで、letやfunの引数を入れ子状にfunとして評価する
+　ようにパースしている。また、ELetの第二引数がEFun型になる可能性があるため、そのパターンマッチングをeval.mlに追加している。
+
+発展2
+　動作例
+　　# let add = fun x -> fun y -> x + y;;
+    add = fun
+    # add 5 3;;
+    - = 8
+    # add 0 15;;
+    - = 15
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1);;
+    sum = fun
+    # sum 10;;
+    - = 55
+    # sum 1;;
+    - = 1
+    # sum 3;;
+    - = 6
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in x + 10;;
+    - = 20
+    # let rec sum x = if x < 1 then 0 else x + sum(x - 1) in sum 10;;
+    - = 55
+
+　考察
+　　問1から拡張した。
+　変更を加えた個所はsyntax.mlとeval.mlである。syntax.mlではELetRecとCRecDecl
+　を新たに加えている。eval.mlでは、ELetRecとCRecDeclのパターンマッチングを追加している。
+　ELetRecとCRecDeclの定義は問2以降のものと同じである。値の再帰的定義を用いるのはeval.ml内の
+　ELetRecとCRecDeclのパターンマッチングであり、マニュアルを読むと、let rec ... and ...という
+　形を定義式に使うことが許されているため、この形を利用して環境への参照を利用した再帰関数の実装
+　と似たように循環的な構造を作成した。具体的にはVFunというクロージャーの中にnewenvという環境を
+　持ち、またnewenvは(f, v) :: envと(f, v)の組を新たに環境に加えたものとなっており、互いが互いを
+　定義に含んだ形となっている。この循環的な構造が再帰関数の構造に対応して再帰関数の評価を可能にしている。
+　　また、CRecDeclでもELetRecと同様の値の再帰的定義を用いている。
+
+発展3
+　動作例
+    # let a = 10;;
+    a = 10
+    # let f = (dfun x -> x + a);;
+    f = fun
+    # let a = 20;;
+    a = 20
+    # f 10;;
+    - = 30
+    # let fact = (dfun n -> if n = 0 then 1 else n * fact (n - 1));;
+    fact = fun
+    # fact 10;;
+    - = 3628800
+    # let fix = fun f -> fun x -> f(fix f) x;;
+    fix = fun
+　　
+　考察
+　　問1から拡張した。
+　全体的に変更を加えている。基本的にはdfunという動的束縛の関数定義を実現するためにdfunを認識させるよう
+　に変更を加えている。syntax.mlでは、DFun型とVDFun型を加えている。また、
+　parser.mlyではDFUNというトークンを加えてdfunを認識してDFunを評価するように遷移を加えている。
+　遷移を加える位置はfunの場合に倣っている。同様に"dfun"を認識するようにlexer.mllも書き換えている。
+　eval.mlではDFunとEAppの第一引数の評価結果がVDFunの場合のパターンマッチングを加えている。
+　　dfunは動的束縛であるため、関数を定義した際の環境を保持する必要がない。そのため、VDFunは環境を
+　保持していない。また、各パターンマッチングについて説明すると、DFunのパターンマッチングではそのまま
+　EFunと同様にVDFunを返すようにしていて、EAppの第一引数を評価した結果がVDFunであった場合のパターンマッチング
+　では、VFunとは異なりeval_exprで持っているenvを用いて引数を評価すればよい。これによって最新の環境で関数適用の
+　評価が可能となる。実際に動作例を見ると、動的束縛が実現できている。
+　　
+　　また、dfunを用いたfactの定義も動作例に記述してある。factの記述例を見ると分かるように、動的束縛では自然に記述
+　するだけで再帰関数が実現できる。これは、普通の関数定義では関数が定義された際の環境を用いてその関数適用の値が評価
+　されるが、動的束縛では関数適用する際の環境は常に最新の環境を利用し、そのため、クロージャー内に環境を保持する必要がない
+　ためである。普通の関数定義の場合、このように再帰関数を実装するとEvalErrとなる。また、動作例をみるとわかるように
+　fixの定義もdfunを用いれば可能であるため、任意の再帰関数をdfunを用いて定義することが可能であると推察される。
+　
+　　　
+
+
+
+
+
+　

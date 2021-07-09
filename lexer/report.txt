@@ -1,0 +1,26 @@
+    05-211013 嶋村光太郎
+
+    まず,lexer-by-hand.mlの実行結果を示す.
+
+    # main "if /* this is a comment */ x>y";;
+    IF ID(x) GT ID(y) - : unit = ()
+    # main "if /* this is a /* nest */ /* /* comment */ (@) */ */ if x>y then xx>=123 else yy<=156";;
+    IF IF ID(x) GT ID(y) THEN ID(xx) GEQ INT(123) ELSE ID(yy) LEQ INT(156) - : unit = ()
+    # main "x*y*z /* */ if /* /* /* */ */";;
+    ID(x) TIMES ID(y) TIMES ID(z) IF invalid token at position 30
+    - : unit = ()
+    # main "if /* this is a comment */ x>y";;
+    IF ID(x) GT ID(y) - : unit = ()
+
+    上記の実行結果から,GT,GEQ,ELSE,TIMESが正しく動作していることが確認できる.
+    また,nested commentについても対応している.これについては,/*の数を保持する
+    counterという変数を用意して実装していて,nested commentの/*と*/の数が合わない
+    場合には適切にerrorを出すようにしている.
+        
+    次にlexer.mllから生成したlexer.mlを実行した結果を示す.
+    if x <=213 then x+123 else x > 0 then x>=100 ...これがsample1.txtの内容
+    # main "sample1.txt";;
+    - : token list =
+    [IF; ID "x"; LEQ; INT 213; THEN; ID "x"; PLUS; INT 123; ELSE; ID "x"; GT;
+    INT 0; THEN; ID "x"; GEQ; INT 100]
+    上記のように,GT,GEQ,ELSEのトークンが正しく認識されていることが分かる.

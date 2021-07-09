@@ -1,0 +1,119 @@
+嶋村光太郎 05-211013
+
+問1
+　動作例
+    # add two three;;
+    - : nat = S (S (S (S (S Z))))
+    # sub two three;;
+    - : nat = Z
+    # sub three two;;
+    - : nat = S Z
+    # mut three two;;
+    - : nat = S (S (S (S (S (S Z)))))
+    # mut two three;;
+    - : nat = S (S (S (S (S (S Z)))))
+    # pow three two;;
+    - : nat = S (S (S (S (S (S (S (S (S Z))))))))
+    # pow two three;;
+    - : nat = S (S (S (S (S (S (S (S Z)))))))
+    # n2i three;;
+    - : int = 3
+    # i2n 10;;
+    - : nat = S (S (S (S (S (S (S (S (S (S Z)))))))))
+
+　考察
+    チャーチ数の定義と似ていると思った。subではパターンマッチングを
+    活かして両方の数字を減らしていく形で実装した。
+
+問2
+　動作例
+    module Stack : MYSTACK
+    val st : 'a Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val st : int Stack.t = <abstr>
+    val i : int = 3
+    val st : int * int Stack.t = (3, <abstr>)
+
+ 考察
+    上の実行例はkadai2.mlに書かれているテストケースの実行結果である。
+    シグネチャを介しているため、'a t型が<abstr>と表示されている。
+    sizeを調べてみると長さが3とint型で表示されている。
+
+問3
+　動作例
+    # bfs tree;;
+    - : int list = [1; 2; 5; 3; 4; 6; 7]
+
+　考察
+　　全頂点について深さをペアにして全列挙してからfilterを利用して
+    深さが大きい順にリスト化して、最後にreverseを掛けることによって
+    level-orderを実現した。大変だった。
+
+問4,5
+　動作例
+    # eval test1;;
+    Exception: Eval_error.
+    # eval test2;;
+    - : value = VBool true
+    # eval test3;;
+    - : value = VInt 6
+    # eval test4;;
+    Exception: Eval_error.
+
+　考察
+　　問4では授業でやった定義を丁寧に拡張して実装した。
+　　問5ではパターンマッチングを入れ子状にすることでerrorになるケースを
+    丁寧に場合分けして実装した。大変だった。
+
+発展　問1
+　動作例
+    # sum_to 10;;
+    - : int = 55
+
+　考察
+　　はじめにlet fix f x = f (x x) f (x x);;というYコンビネータを用いた形での実装を
+  考えていたが、(x x)の部分の型付けにおいてエラーが発生してしまった。続いて、
+  let fix1 f = (fun x -> f (fun y -> x x y)) (fun x -> f (fun y -> x x y));;
+  というZコンビネータを用いた形での実装を考えたが、再びxの部分の型付けに失敗してしまった。
+  不動点コンビネータのOCamlでの適用について調べてみると、https://ja.wikipedia.org/wiki/不動点コンビネータ 
+  にYコンビネータの型付けを可能にするコードが載っていたため、そのまま実装した。(自力で出来ずに申し訳ございません。)
+  上記サイトによると、ヴァリアント型を用いて'a recc型を定義することで、xに関する型付けの問題を解決しているようである。
+
+発展　問3
+　動作例
+                    OCaml version 4.08.1
+
+        # let curry f x y = f (x, y);;
+        val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c = <fun>
+        # let uncurry f (x, y) = f x y;;
+        val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c = <fun>
+        # let f = let count = ref (35) in fun x y -> count;;
+        val f : '_weak1 -> '_weak2 -> int ref = <fun>
+        # let h = fun f -> f 0;;
+        val h : (int -> 'a) -> 'a = <fun>
+        # h f;;
+        - : '_weak2 -> int ref = <fun>
+        # 
+    
+                    OCaml version 4.08.1
+
+        # let curry f x y = f (x, y);;
+        val curry : ('a * 'b -> 'c) -> 'a -> 'b -> 'c = <fun>
+        # let uncurry f (x, y) = f x y;;
+        val uncurry : ('a -> 'b -> 'c) -> 'a * 'b -> 'c = <fun>
+        # let f = let count = ref (35) in fun x y -> count;;
+        val f : '_weak1 -> '_weak2 -> int ref = <fun>
+        # let h = fun f -> f 0;;
+        val h : (int -> 'a) -> 'a = <fun>
+        # h (curry (uncurry f));;
+        - : '_weak3 -> int ref = <fun>
+
+　考察
+　　参照透過性を破るために副作用を介した利用を考えて、色々コードを試してみたら
+　結果の変化が表れた。関数f内で参照型のcountを嚙ませているため、引数の型が_weak型に
+　なっており、h fでは引数に貼られた型のラベルが引き継がれて: '_weak2 -> int ref = <fun>
+　となっているが、h (curry (uncurry f))では、curryとuncurryを通しているためfの型が引き継がれずに
+　新規に型にラベルが貼られて: '_weak3 -> int ref = <fun>となっている。これにより、評価結果の値が
+　異なっている。
+

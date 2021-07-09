@@ -1,0 +1,214 @@
+嶋村光太郎 05-211013
+
+　以下の全ての問題について、実行の際にはmakeによってビルドして下さい。
+
+問1　動作例
+
+# [];;
+- :  = []
+# (1, 2);;
+- :  = (1,2)
+# (1, 1 + 3);;
+- :  = (1,4)
+# (1, x + 10);;
+- :  = (1,20)
+# 1 :: 2;;
+- :  = (1::2)
+# 1 :: 2 :: [];;
+- :  = (1::(2::[]))
+
+考察
+　第8回の問2を基にしている。
+　eval.mlのeval_expl内のパターンマッチングにEPair,ECons,ENilを追加している。
+　ENilは[]に対応しており、VNilをそのまま返している。
+　EPairとEConsはそれぞれ(expr , expr)とexpr :: exprに対応しており、二つの引数を評価した後に
+それぞれVPairとVConsを返している。
+
+問2　動作例
+
+# let f = fun x -> match x with | 0 -> 0 | _ -> 1;;
+f :  = fun
+# f 1;;
+- :  = 1
+# f 0;;
+- :  = 0
+# f 10;;
+- :  = 1
+# let g = fun x -> match x with | [] -> [] | _ -> 10;;
+g :  = fun
+# g [];;
+- :  = []
+# let h = fun x -> match x with |(10, 10) -> (10, 10) | (1, 1) -> (0, 0) | (_, 5) -> (5, 5) | (_, _) -> (3, 3);;
+h :  = fun
+# h (10, 10);;
+- :  = ( 10 , 10 )
+# h (1, 1);;
+- :  = ( 0 , 0 )
+# h (5, 5);;
+- :  = ( 5 , 5 )
+# h (3, 3);;
+- :  = ( 3 , 3 )
+
+考察
+　基本的にスライドに沿って実装している。
+まず、補助関数について説明する。
+　find_matchはpattern型とvalue型を引数に取る関数である。
+スライドの9ページのパターン照合をパターンマッチングを用いて実装している。
+パターン照合に失敗した場合はNoneを返し、成功した場合はSomeを用いて束縛を返すようにしている。
+　pat_matchはパターンのリストとvalue型を受け取り、リストの中のパターンに対して先頭から順番に
+パターン照合を行い、リストの何番目のパターンが照合に成功するかを返している。照合するパターンが
+リスト内に存在しない場合はEvalErrを返している。
+　これらの関数を用いてeval_expr内にEMatchのパターンマッチングを追加している。
+第一引数を評価してvalue型の値を取得し、pat_matchとList.nthを用いてパターンとexprを
+取得し、そのパターンとfimd_matchを用いてパターン照合を行っている。
+
+問3　動作例
+
+# ((3, x), (true, (false, 3)));;
+- : ((int , int) , (bool , (bool , int))) = ( ( 3 , 10 ) , ( true , ( false , 3 ) ) )
+# let f = fun x -> match x with | 0 -> 0 | _ -> 1;;
+f : (int) -> (int) = fun
+# let g = fun x -> match x with | [] -> [] | _ -> 10;;
+Fatal error: exception Not_found
+# let h = fun x -> match x with |(10, 10) -> (10, 10) | (1, 1) -> (0, 0) | (_, 5) -> (5, 5) | (_, _) -> (3, 3);;
+h : ((int , int)) -> ((int , int)) = fun
+# let list = fun x -> match x with | [] -> [] | _ -> 1 :: 2 :: [];;
+list : (cons) -> (cons) = fun
+# let list2 = fun x -> fun y -> match x with true -> [] | false -> 1::[];;
+list2 : (bool) -> ((a21) -> (cons)) = fun
+
+考察
+　まず、print_type内では、TyPairやTyListのパターンマッチングを追加している。
+TyListに関してはconsを表示するようにしている。また、main.mlではprint_typeで型推論
+した結果を表示するようにしている。
+　続いて型推論の説明を行う。typing.mlについて説明する。
+まず、infer_exprに関しては、EPair,ECons,ENil,EMatchのパターンマッチングを追加している。
+このうち、EMatch以外に関してはスライドの制約の生成の部分をそのまま実装している。
+また、EMatchに関しては、補助関数を使用しつつスライドの通りに実装している。まず、
+第一引数を評価して、型と制約を取得する。続いて、EMatchの第二引数である(pattern * expr)list
+をeval_matchとeval_match1とeval_match2とmake_constraintsとeval_pという補助関数を用いて評価している。
+　eval_pはパターンを受け取って、スライドの通りに各パターンを評価して、型と制約と環境の組を返している。
+　eval_matchに関しては、eval_pを利用してパターンを評価して取得した型環境を現在の型環境に追加した上で
+パターンに対応するexprを評価して得た型と制約のリストを返している。
+　eval_match1に関しては、eval_pを利用してパターンを評価して取得した型のリストを返している。
+　eval_match2に関しては、eval_pを利用してパターンを評価して取得した制約のリストを返している。
+　make_constraintsでは、eval_matchで得たリストと新たに導入した型変数を受け取って、型変数と型、
+そして制約のリストを返している。
+　最後に先ほどの補助関数で取得した制約をまとめて全体の返り値としている。
+　また、typing1.mlのty_substやunifyについても変更を加えている。
+　ty_substでは、型のパターンマッチングにTyPairとTyListの場合を追加している。
+　unifyでは、スライドに書いてあるTyPair同士、TyList同士のケースを追加している。
+　
+　動作例を見ると、型が正しく表示されていることが分かる。なお、パターンマッチング中のリストに関しては
+単純にconsを表示するようにしている。また、let gに関しては、パターンマッチングで空リストと10を返す場合が
+存在するため、unifyにおいてエラーを起こすようになっている。
+
+問4　動作例
+
+# let x = 3 in let x = 5 in x;;
+- : int = 5
+# fun x -> x + 1;;
+- : (int) -> (int) = fun
+# fun x -> fun y -> x + y;;
+- : (int) -> ((int) -> (int)) = fun
+# (fun x -> x + 1) 2;;
+- : int = 3
+# (fun x -> fun y -> x + y) 2 3;;
+- : int = 5
+# let inc = fun x -> x + 1;;
+inc : (int) -> (int) = fun
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1))) in fact 10;;
+- : int = 3628800
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+fact : (int) -> (int) = recfun
+# fact 10;;
+- : a17 = 3628800
+
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+fact : (int) -> (int) = recfun
+# let f = fun x -> if x then 1 else fact 10000;;
+f : (bool) -> (int) = fun
+# f true;;
+- : int = 1
+
+考察　
+　こちらも第8回の問2を基にしている。
+　基本的にはスライドの通りに実装している。
+まず、syntax.mlのvalue型においてVNoneとThunkを追加している。VNoneはeval_commandのvalue型の返り値に用いている
+ダミー変数のようなものである。Thunkはスライドの通りである。また、expr型にERecFunを追加している。これはeval_exprで
+再帰関数を処理する際に用いている。
+　次にeval.mlの変更について説明する。まず、envをnameとthunkのリストに変更している。
+まず、eval_expr内の変更について説明する。
+　EVarに関しては、lookupで取得されるものがthunkであり、thunk内の環境を用いて、thunk内のexprを評価している。ここで、
+必要になるまで評価されていなかったexprが評価されている。
+　ELetに関しては、第二引数を環境とペアにしてthunkを作成して、thunkと第一引数を環境に加えたうえで第三引数を評価している。
+ここでは、後述のEAppのスライドの説明を参考にしている。
+　EAppに関しては、スライドの説明通りに実装している。但し、スライドのv1が再帰関数だった場合は先ほど新たに加えたERecFunを
+thunkの第一引数にすることで関数の名前の情報を保持している。また、関数名とthunkを環境に追加している。
+　ELetRecはEAppの再帰関数の実装に倣って実装しており、ERecFunに関してはVRecFunをそのまま返している。
+　eval_commandに関してはeval_exprでの実装と同様にthunkを用いた実装を行っている。
+
+　動作例を見ると、基本的な関数や再帰関数が問題なく動作していることが分かる。また、factの再帰関数をif文のelse部分で
+評価するlet fがif trueだった場合に高速で動作することから名前呼びが正しく実装出来ていることが確認出来る。
+
+発展1　動作例
+
+問4のEVarの評価時にthunkの評価の過程を表示した場合
+# let x = 2 + 3 in let y = x in y * x;;
+x 5
+y 5
+x 5
+- : int = 25
+# (fun x -> x * x) (2 + 3);;
+x 5
+x 5
+- : int = 25
+
+発展1のEVarの評価時にthunkの評価の過程を表示した場合
+# let x = 2 + 3 in let y = x in y * x;;
+x 5
+y 5
+- : int = 25
+# (fun x -> x * x) (2 + 3);;
+x 5
+- : int = 25
+
+その他のケースについて動作することを確認
+# let x = 3 in let x = 5 in x;;
+- : int = 5
+# fun x -> x + 1;;
+- : (int) -> (int) = fun
+# fun x -> fun y -> x + y;;
+- : (int) -> ((int) -> (int)) = fun
+# (fun x -> x + 1) 2;;
+- : int = 3
+# (fun x -> fun y -> x + y) 2 3;;
+- : int = 5
+# let inc = fun x -> x + 1;;
+inc : (int) -> (int) = fun
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1))) in fact 10;;
+- : int = 3628800
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+fact : (int) -> (int) = recfun
+# fact 10;;
+- : a17 = 3628800
+# let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+fact : (int) -> (int) = recfun
+# let f = fun x -> if x then 1 else fact 10000;;
+f : (bool) -> (int) = fun
+# f true;;
+- : int = 1
+
+考察
+　基本的には問4の名前呼びの実装をそのまま踏襲している。ThunkをThunkまたは値への参照へ
+変更した部分が異なっている。syntax.mlのvalueで行っているこの変更はスライドに忠実に実装している。
+また、eval.mlでの変更はほとんどなく、Thunkを使用していた部分をref DThunkに変えている部分と、EVarの
+評価の仕方のみ異なる。EVarではDVarかDThunkかで場合分けしていて、DVarだったらそのまま値を返し、DThunkだったら
+DThunk内の環境を用いてDThunk内のexprを評価して、その値で参照を書き換えた後に、その値を返すようにしている。
+これもスライドの通りに実装している。
+
+　動作例では問4と発展1のEVar内にThunkの評価過程を表示するコードを追記して動作の違いを確認した。
+なお、追記したコードはコメントアウトしている。この評価の違いを比較すると、名前呼びは一度評価したxを再度評価しているが
+、必要呼びは一度評価したxは再び評価されないようになっていることが確認出来る。
+また、その他に基本的な関数や再帰関数が正しく動作することを確認した。
+

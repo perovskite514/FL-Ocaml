@@ -1,0 +1,121 @@
+嶋村光太郎 05-211013
+
+　以下の全ての問題について、実行の際にはmakeによってビルドして下さい。前回のMakefileを流用しているため、
+make cleanを行うと、tySyntax.cmi,tySyntax.cmo,constraintSolver.cmi,constraintSolver.cmoが消えてしまうことに注意してください。
+また、OCaml version 4.08.1の環境で実行しています。
+
+　問1
+　　動作例
+        ./main
+        # 1 + 2;;
+        - : int = 3
+        # true;;
+        - : bool = true
+        # false;;
+        - : bool = false
+        # 13 = 4;;
+        - : bool = false
+        # 4 < 13;;
+        - : bool = true
+        # if true then 2 else 3;;
+        - : int = 2
+        # if 2 < 3 then 2 else 3;;
+        - : int = 2
+        # let x = 1 + 2;;
+        x : int = 3
+        # let y = x * 4;;
+        y : int = 12
+        # x;;
+        - : int = 3
+        # let z = 3 in z + z;;
+        - : int = 6
+        # z;;
+        Fatal error: exception Typing.TypeErr
+
+        ./main
+        # let x = 3 in let x = 5 in x;;
+        - : int = 5
+        # fun x -> x + 1;;
+        - : (int > int) = fun
+        # fun x -> fun y -> x + y;;
+        - : (int -> (int -> int)) = fun
+        # (fun x -> x + 1) 2;;
+        - : int = 3
+        # (fun x -> fun y -> x + y) 2 3;;
+        - : int = 5
+        # let inc = fun x -> x + 1;;
+        inc : (int -> int) = fun
+        # let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1)));;
+        fact : (int -> int) = recfun
+        # let rec fact n = if (n = 1) then 1 else (n * (fact (n - 1))) in fact 10;;
+        - : int = 3628800
+        # 1 + true;;
+        Fatal error: exception ConstraintSolver.TyError
+    
+    考察
+    　基本的には前回の問2のファイルを使用し、その一部を拡張している。変化を加えたファイルは
+    main.mlでその他、型推論を行うためのファイルtyping.mlを作成した。main.mlには、入力を読み込んだに渡す
+    eval_commandに渡す直前にinfer_cmd(スライドの問1で定義されている関数)に渡すことによって
+    型推論を行っている。これによって、型推論でエラーが出なかった場合のみ、式の評価が行われる。また、型の出力に
+    ついての記述と、初期環境に対応する型の環境の追加も行っている。
+
+    　続いて、typing.mlについて解説する。最初にopenとエラーや環境の型、補助関数の定義を行っている。
+    次に、eval_exprとeval_commandに対応しているinfer_exprとinfer_cmdによって、command型とexpr型の変数を処理している。
+    　infer_exprについては、基本的にはスライドの制約の生成の記述を参考に型と制約を返すようにしている。
+    定数では空の制約と型の組を返していて、変数では型環境を探したうえで、見つからなかったらエラーを返すようにしている。
+    EAddからELtまでは引数をinfer_exprで評価したうえで、評価して得られた二つの制約と、引数に対応する型の制約を合わせた制約を返している。
+    let式とif式についてはスライドの記述通りに型と制約を返している。
+    関数抽象や関数適用、再帰関数については、let a = new_tyvar ()で生成した型変数を(TyVar a)として導入することで型変数を利用したうえで、
+    スライドの記述通りに型と制約を返している。
+    　infer_cmdについてはeval_commandの実装を参考にしつつ、constraintSolverの関数を利用している。
+    CExpについては、引数eをinfer_exprで評価して得られた型と制約をty_substとunifyに適用することで全体の型を取得して、型環境と組にして返している。
+    CDeclについては、CExpの実装に型環境を拡張する実装を加えている。
+    CRecDeclに関しては、スライドの再帰関数の例を参考にeを評価(スライドのe1の評価に対応)したうえで、unifyに渡すconstraintsにb = tyの制約を追加した
+    上で、CDeclと同様に全体の型と型環境の組を返している。
+    　
+    　動作例については、主に第一回のスライドに出てきた式の型がつくことを確認している。また、型がつかない場合はエラーが出ることも確認した。
+
+問2
+　動作例
+    # let id = fun x -> x in (id 0, id true);;
+    - : int * bool = (0, true)
+    # (fun id -> (id 1, id true)) (fun x -> x);;
+    Error: This expression has type bool but an expression was expected of type
+            int
+
+    # let id () x = x;;
+    val id : unit -> 'a -> 'a = <fun> 
+    # let f = id ();;
+    val f : '_weak1 -> '_weak1 = <fun>
+    # ((id () 10), (id () true));;
+    - : int * bool = (10, true)
+    # (f 10, f true);;
+    Error: This expression has type bool but an expression was expected of type
+            int
+    
+
+　　https://athos.hatenablog.com/entry/20130223/let_polymorphism_and_restrictions
+　や授業の第2回、第8回のスライドを参考にしている。
+　　動作例のlet id = fun x -> x in (id 0, id true);;ではidは多相関数であり、in以降
+　の評価においてはid 0ではint -> intとして、id trueではbool -> boolとして関数は評価を
+　行っている。しかし、これを# (fun id -> (id 1, id true)) (fun x -> x);;としてfunで書き換えると
+　コンパイルエラーとなる。この場合は(id 1)の評価がされたことでidが扱う型が型多相ではなくint型
+　に固定されてしまったことでbool型の評価時にエラーが起きるようになっている。
+
+　　OCamlでは'aと'_weakという二種類の型多相がある。前者は通常の型多相であるが、後者は弱い型多相と呼ばれ
+　ていて、一度型変数が具体化されてしまうと型が固定化されて多相性を失ってしまう。第2回のスライドなどにも
+　書いてあるように、OCamlではlet多相などで多相的な型を与える際に値制限を課している。これはlet x = eとして
+　eに多相性を持たせる際に、eには副作用が生じない値である式のみを許容するという制限である。副作用を起こしうる
+　式に多相的な型を持たせない理由は型安全性が壊れる可能性が生じるからである。値制限によって値でない式には弱い
+　型多相である'_weakが与えられる。先ほどの# (fun id -> (id 1, id true)) (fun x -> x);;ではidは多相関数では
+　なく、'_weak型を扱う関数になっているため、コンパイルエラーを起こしている。また、次に書かれている
+　# let id () x = x;;　# let f = id ();;の例では、idは右辺が値である式なので多相関数であるが、fは右辺が関数適用
+  であるため、'_weak型を扱う式となっている。この違いによって、同値に思える# ((id () 10), (id () true));;と
+　# (f 10, f true);;では前者のみ型がついて後者はコンパイルエラーとなる。
+　　
+　まとめ
+　　OCamlでは型多相に関して型安全性が損なわれることを回避する策として値制限が導入されている。これによって、副作用を
+　生じさせない関数適用に関しても型多相とならずに'_weak型が与えられる。これによって、同様の関数を記述していると思えるのに
+　片方では型がつかず、もう一方では型がつくプログラムが存在する。
+　　
+    　　　　　　　　　　　　　

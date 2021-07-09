@@ -1,0 +1,15 @@
+嶋村光太郎 05-211013
+
+動作例
+    # add (fun f x -> f (f x)) (fun f x -> f (f x)) f 0;;
+    - : int = 4
+    # mut (fun f x -> f (f x)) (fun f x -> f (f x)) f 0;;
+    - : int = 4
+    # sub (fun f x -> f (f x)) (fun f x -> f x) f 0;;
+    - : int = 1
+    # sub (fun f x -> f x) (fun f x -> f (f x)) f 0;;
+    - : int = 0
+
+考察
+    add関数の実装はチャーチ数の定義に従って行っているが、それ以外の関数は型がつかない問題を解決できなかったため
+    intを経由したとてもつまらない方法で実装してしまった。
